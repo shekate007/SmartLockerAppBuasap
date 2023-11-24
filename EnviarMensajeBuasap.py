@@ -7,7 +7,7 @@ SSID = "Jorge"
 PASSWORD = "12345"
 
 # Token de acceso para la API de WhatsApp
-TOKEN = "Bearer EAAIao2QuMP4BAEg4Hs76IvHZAeBuZCYP9lCnipU1hlxDmTcw77orMZCaawAoAusMNvvDlETU5d1uxiwjvB72j2DW6UOJqxIxZCofP6apbuitVtZBjueB4HZBXZBhIY64JN75tWFVY1UQbBo9gZAZBWl776gC3khAPcgO4tiykQ1CPpZBXTBCEeRZB49dSUgZB2rYW2OYr7NWKgzEIgZDZD"
+TOKEN = "EAADGJZAYdRZBsBO1HQTyWG423FRj703ZBR9YUoFlz9f5G5sgcVKPVrtX85p7NA97GJ97j57ldPngt1ZBZAY32gvw4rdACWZAscTWcMainw3kvwIkiMYYGseEZAihxGgMtWqFz967ffeoeKr7qeamPTsW00xru2SSX0th9Llz1bRcCVS2AHckP3FgxaheRLrb62mcZBtm0uItwIw3xk1N"
 
 # URL a donde se enviarán los mensajes de WhatsApp
 SERVIDOR = "https://graph.facebook.com/v17.0/184761381381361/messages"
@@ -20,11 +20,23 @@ payload = {
     "messaging_product": "whatsapp",
     "to": NUMERO_TELEFONO,
     "type": "text",
-    "text": {"body": "Se ha abierto el Locker desde la App"}
+    "text": {"body": "Se ha abierto el Locker con el teclado"}
 }
 
-# Pin del sensor de movimiento
-pinSensorMov = machine.Pin(15, machine.Pin.IN)
+# Pines del teclado matricial
+filas = [23, 22, 21, 19]
+columnas = [18, 5, 17]
+
+teclas = [
+    ['1', '2', '3'],
+    ['4', '5', '6'],
+    ['7', '8', '9'],
+    ['*', '0', '#']
+]
+
+# Contraseña
+contrasena_correcta = "123"
+entrada_usuario = []
 
 def conectar_wifi():
     import network
@@ -36,11 +48,30 @@ def conectar_wifi():
     print("Conectado a la red WiFi")
     print("IP:", wlan.ifconfig()[0])
 
-def enviar_mensaje_whatsapp():
-    if pinSensorMov.value() == 1:  # Si hay movimiento
-        print("Hay movimiento")
-        time.sleep(5)  # Esperar 5 segundos
+def leer_tecla():
+    for i in range(3):
+        machine.Pin(columnas[i], machine.Pin.OUT).value(1)
+        for j in range(4):
+            if machine.Pin(filas[j], machine.Pin.IN).value() == 0:
+                return teclas[j][i]
+        machine.Pin(columnas[i], machine.Pin.OUT).value(0)
+    return None
 
+def ingresar_contrasena():
+    global entrada_usuario
+    while True:
+        tecla_presionada = leer_tecla()
+        if tecla_presionada:
+            entrada_usuario.append(tecla_presionada)
+            print("Contraseña actual:", ''.join(entrada_usuario))
+            time.sleep(0.2)  # Espera para evitar la repetición de teclas
+        if len(entrada_usuario) == len(contrasena_correcta):
+            break
+
+def enviar_mensaje_whatsapp():
+    if ''.join(entrada_usuario) == contrasena_correcta:
+        print("Contraseña correcta. Enviando mensaje de WhatsApp...")
+        
         # Configurar la conexión HTTP
         headers = {
             "Content-Type": "application/json",
@@ -62,5 +93,9 @@ def enviar_mensaje_whatsapp():
 conectar_wifi()
 
 while True:
+    entrada_usuario = []  # Reiniciar la entrada del usuario
+    print("Por favor, ingrese la contraseña de 3 dígitos:")
+    ingresar_contrasena()
     enviar_mensaje_whatsapp()
-    time.sleep(1)  # Esperar 1 segundo
+    time.sleep(1)  # Esperar 1 segundo antes de solicitar la contraseña nuevamente
+
